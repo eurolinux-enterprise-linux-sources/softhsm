@@ -94,6 +94,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_64bit.m4 \
 	$(top_srcdir)/m4/acx_non_paged_memory.m4 \
 	$(top_srcdir)/m4/acx_openssl.m4 \
 	$(top_srcdir)/m4/acx_openssl_ecc.m4 \
+	$(top_srcdir)/m4/acx_openssl_fips.m4 \
 	$(top_srcdir)/m4/acx_openssl_gost.m4 \
 	$(top_srcdir)/m4/acx_openssl_rfc5649.m4 \
 	$(top_srcdir)/m4/acx_pedantic.m4 \
@@ -113,8 +114,9 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(man1dir)"
 PROGRAMS = $(bin_PROGRAMS)
+am__dirstamp = $(am__leading_dot)dirstamp
 am_softhsm2_migrate_OBJECTS = softhsm2-migrate.$(OBJEXT) \
-	getpw.$(OBJEXT) library.$(OBJEXT)
+	../common/getpw.$(OBJEXT) ../common/library.$(OBJEXT)
 softhsm2_migrate_OBJECTS = $(am_softhsm2_migrate_OBJECTS)
 softhsm2_migrate_DEPENDENCIES =
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -352,6 +354,7 @@ AM_CPPFLAGS = -I$(srcdir)/../../lib/cryptoki_compat \
 			@SQLITE3_INCLUDES@
 
 dist_man_MANS = softhsm2-migrate.1
+AUTOMAKE_OPTIONS = subdir-objects
 softhsm2_migrate_SOURCES = softhsm2-migrate.cpp \
 				../common/getpw.cpp \
 				../common/library.cpp
@@ -443,6 +446,16 @@ clean-binPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
+../common/$(am__dirstamp):
+	@$(MKDIR_P) ../common
+	@: > ../common/$(am__dirstamp)
+../common/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) ../common/$(DEPDIR)
+	@: > ../common/$(DEPDIR)/$(am__dirstamp)
+../common/getpw.$(OBJEXT): ../common/$(am__dirstamp) \
+	../common/$(DEPDIR)/$(am__dirstamp)
+../common/library.$(OBJEXT): ../common/$(am__dirstamp) \
+	../common/$(DEPDIR)/$(am__dirstamp)
 
 softhsm2-migrate$(EXEEXT): $(softhsm2_migrate_OBJECTS) $(softhsm2_migrate_DEPENDENCIES) $(EXTRA_softhsm2_migrate_DEPENDENCIES) 
 	@rm -f softhsm2-migrate$(EXEEXT)
@@ -450,62 +463,38 @@ softhsm2-migrate$(EXEEXT): $(softhsm2_migrate_OBJECTS) $(softhsm2_migrate_DEPEND
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f ../common/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getpw.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/library.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@../common/$(DEPDIR)/getpw.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@../common/$(DEPDIR)/library.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/softhsm2-migrate.Po@am__quote@
 
 .cpp.o:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ $<
 
 .cpp.obj:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .cpp.lo:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LTCXXCOMPILE) -c -o $@ $<
-
-getpw.o: ../common/getpw.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT getpw.o -MD -MP -MF $(DEPDIR)/getpw.Tpo -c -o getpw.o `test -f '../common/getpw.cpp' || echo '$(srcdir)/'`../common/getpw.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/getpw.Tpo $(DEPDIR)/getpw.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../common/getpw.cpp' object='getpw.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o getpw.o `test -f '../common/getpw.cpp' || echo '$(srcdir)/'`../common/getpw.cpp
-
-getpw.obj: ../common/getpw.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT getpw.obj -MD -MP -MF $(DEPDIR)/getpw.Tpo -c -o getpw.obj `if test -f '../common/getpw.cpp'; then $(CYGPATH_W) '../common/getpw.cpp'; else $(CYGPATH_W) '$(srcdir)/../common/getpw.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/getpw.Tpo $(DEPDIR)/getpw.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../common/getpw.cpp' object='getpw.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o getpw.obj `if test -f '../common/getpw.cpp'; then $(CYGPATH_W) '../common/getpw.cpp'; else $(CYGPATH_W) '$(srcdir)/../common/getpw.cpp'; fi`
-
-library.o: ../common/library.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT library.o -MD -MP -MF $(DEPDIR)/library.Tpo -c -o library.o `test -f '../common/library.cpp' || echo '$(srcdir)/'`../common/library.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/library.Tpo $(DEPDIR)/library.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../common/library.cpp' object='library.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o library.o `test -f '../common/library.cpp' || echo '$(srcdir)/'`../common/library.cpp
-
-library.obj: ../common/library.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT library.obj -MD -MP -MF $(DEPDIR)/library.Tpo -c -o library.obj `if test -f '../common/library.cpp'; then $(CYGPATH_W) '../common/library.cpp'; else $(CYGPATH_W) '$(srcdir)/../common/library.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/library.Tpo $(DEPDIR)/library.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../common/library.cpp' object='library.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o library.obj `if test -f '../common/library.cpp'; then $(CYGPATH_W) '../common/library.cpp'; else $(CYGPATH_W) '$(srcdir)/../common/library.cpp'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -671,6 +660,8 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f ../common/$(DEPDIR)/$(am__dirstamp)
+	-rm -f ../common/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -681,7 +672,7 @@ clean: clean-am
 clean-am: clean-binPROGRAMS clean-generic clean-libtool mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf ../common/$(DEPDIR) ./$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -727,7 +718,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf ../common/$(DEPDIR) ./$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

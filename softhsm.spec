@@ -1,20 +1,21 @@
 Summary: Software version of a PKCS#11 Hardware Security Module
 Name: softhsm
-Version: 2.0.0b1
-Release: 4%{?dist}
-ExcludeArch: i686 ppc s390
+Version: 2.0.0rc1
+Release: 3%{?dist}
 License: BSD
 Url: http://www.opendnssec.org/
 Source: http://dist.opendnssec.org/source/testing/%{name}-%{version}.tar.gz
-Source1: softhsm.module
+Source1: http://dist.opendnssec.org/source/testing/%{name}-%{version}.tar.gz.sig
+Source2: softhsm.module
 # taken from coolkey which is not build on all arches we build on
-Source2: softhsm2-pk11install.c
+Source3: softhsm2-pk11install.c
 Group: Applications/System
-BuildRequires: openssl-devel, sqlite-devel >= 3.4.2, cppunit-devel
+BuildRequires: openssl-devel >= 1.0.1e-42.el7_1.2, sqlite-devel >= 3.4.2, cppunit-devel
 BuildRequires: gcc-c++, pkgconfig, p11-kit-devel, nss-devel
 
 Requires(pre): shadow-utils
 Requires: p11-kit, nss-tools
+Requires: openssl-libs >= 1.0.1e-42.el7_1.2
 
 %global _hardened_build 1
 
@@ -45,12 +46,12 @@ sed -i "s:full_libdir/softhsm:full_libdir:g" configure
 sed -i "s:libdir)/@PACKAGE@:libdir):" Makefile.in
 
 %build
-%configure --libdir=/usr/lib64/pkcs11 --with-openssl=%{_prefix} --enable-ecc --disable-gost \
+%configure --libdir=%{_libdir}/pkcs11 --with-openssl=%{_prefix} --enable-ecc --disable-gost \
            --with-migrate --enable-visibility
 
 make %{?_smp_mflags}
 # install our copy of pk11install taken from coolkey package
-cp %{SOURCE2} .
+cp %{SOURCE3} .
 gcc $(pkg-config --cflags nss) %{optflags} -c softhsm2-pk11install.c
 gcc $(pkg-config --libs nss) -lpthread  -lsoftokn3 -ldl -lz %{optflags} softhsm2-pk11install.o -o softhsm2-pk11install
 
@@ -60,7 +61,7 @@ make check
 %install
 rm -rf %{buildroot}
 make DESTDIR=%{buildroot} install
-install -D %{SOURCE1} %{buildroot}/%{_datadir}/p11-kit/modules/softhsm.module
+install -D %{SOURCE2} %{buildroot}/%{_datadir}/p11-kit/modules/softhsm.module
 
 rm %{buildroot}/%{_sysconfdir}/softhsm2.conf.sample
 rm -f %{buildroot}/%{_libdir}/pkcs11/*a
@@ -101,6 +102,13 @@ if [ $1 -eq 0 ]; then
 fi
 
 %changelog
+* Fri Jun 26 2015 Petr Spacek <pspacek@redhat.com> - 2.0.0rc1-3
+- Dependency on OpenSSL libraries with fix for bug #1193942 was added.
+
+* Mon Jun 01 2015 Petr Spacek <pspacek@redhat.com> - 2.0.0rc1-1
+- Resolves: rhbz#1193892 Rebase to latest upstream version
+- i686/ppc/s390 architectures are now included in the build
+
 * Tue Nov 11 2014 Paul Wouters <pwouters@redhat.com> - 2.0.0b1-4
 - Resolves: rhbz#1117157 Add warning to package description
 

@@ -97,6 +97,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_64bit.m4 \
 	$(top_srcdir)/m4/acx_non_paged_memory.m4 \
 	$(top_srcdir)/m4/acx_openssl.m4 \
 	$(top_srcdir)/m4/acx_openssl_ecc.m4 \
+	$(top_srcdir)/m4/acx_openssl_fips.m4 \
 	$(top_srcdir)/m4/acx_openssl_gost.m4 \
 	$(top_srcdir)/m4/acx_openssl_rfc5649.m4 \
 	$(top_srcdir)/m4/acx_pedantic.m4 \

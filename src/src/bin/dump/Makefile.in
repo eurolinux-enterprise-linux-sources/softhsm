@@ -79,7 +79,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = softhsm2-dump-file$(EXEEXT) $(am__EXEEXT_1)
-@BUILD_OBJECTSTORE_BACKEND_DB_TRUE@am__append_1 = softhsm2-dump-db
+@BUILD_OBJECTSTORE_BACKEND_DB_TRUE@am__append_1 = softhsm2-dump-db.1
+@BUILD_OBJECTSTORE_BACKEND_DB_TRUE@am__append_2 = softhsm2-dump-db
 subdir = src/bin/dump
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp $(dist_man_MANS)
@@ -95,6 +96,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_64bit.m4 \
 	$(top_srcdir)/m4/acx_non_paged_memory.m4 \
 	$(top_srcdir)/m4/acx_openssl.m4 \
 	$(top_srcdir)/m4/acx_openssl_ecc.m4 \
+	$(top_srcdir)/m4/acx_openssl_fips.m4 \
 	$(top_srcdir)/m4/acx_openssl_gost.m4 \
 	$(top_srcdir)/m4/acx_openssl_rfc5649.m4 \
 	$(top_srcdir)/m4/acx_pedantic.m4 \
@@ -358,11 +360,13 @@ AM_CPPFLAGS = -I$(srcdir)/../../lib/cryptoki_compat \
 			-I$(srcdir)/../../lib \
 			@SQLITE3_INCLUDES@
 
-dist_man_MANS = softhsm2-dump-file.1 softhsm2-dump-db.1
+dist_man_MANS = softhsm2-dump-file.1 $(am__append_1)
 softhsm2_dump_file_SOURCES = softhsm2-dump-file.cpp
 softhsm2_dump_db_SOURCES = softhsm2-dump-db.cpp
 softhsm2_dump_db_LDADD = @SQLITE3_LIBS@ @YIELD_LIB@
-EXTRA_DIST = $(srcdir)/*.h
+EXTRA_DIST = $(srcdir)/*.h \
+			softhsm2-dump-db.1
+
 all: all-am
 
 .SUFFIXES:

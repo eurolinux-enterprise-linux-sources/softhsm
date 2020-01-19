@@ -95,6 +95,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_64bit.m4 \
 	$(top_srcdir)/m4/acx_non_paged_memory.m4 \
 	$(top_srcdir)/m4/acx_openssl.m4 \
 	$(top_srcdir)/m4/acx_openssl_ecc.m4 \
+	$(top_srcdir)/m4/acx_openssl_fips.m4 \
 	$(top_srcdir)/m4/acx_openssl_gost.m4 \
 	$(top_srcdir)/m4/acx_openssl_rfc5649.m4 \
 	$(top_srcdir)/m4/acx_pedantic.m4 \
@@ -112,13 +113,15 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES = softhsm2.conf
 CONFIG_CLEAN_VPATH_FILES =
+am__dirstamp = $(am__leading_dot)dirstamp
 am_p11test_OBJECTS = p11test.$(OBJEXT) \
 	SymmetricAlgorithmTests.$(OBJEXT) DigestTests.$(OBJEXT) \
 	InitTests.$(OBJEXT) InfoTests.$(OBJEXT) RandomTests.$(OBJEXT) \
 	SessionTests.$(OBJEXT) TokenTests.$(OBJEXT) \
 	UserTests.$(OBJEXT) ObjectTests.$(OBJEXT) \
-	SignVerifyTests.$(OBJEXT) AsymEncryptDecryptTests.$(OBJEXT) \
-	AsymWrapUnwrapTests.$(OBJEXT) osmutex.$(OBJEXT)
+	DeriveTests.$(OBJEXT) SignVerifyTests.$(OBJEXT) \
+	AsymEncryptDecryptTests.$(OBJEXT) \
+	AsymWrapUnwrapTests.$(OBJEXT) ../common/osmutex.$(OBJEXT)
 p11test_OBJECTS = $(am_p11test_OBJECTS)
 p11test_DEPENDENCIES = ../libsofthsm2.la
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -533,6 +536,7 @@ AM_CPPFLAGS = -I$(srcdir)/.. \
 				-I$(srcdir)/../common \
 				`cppunit-config --cflags`
 
+AUTOMAKE_OPTIONS = subdir-objects
 p11test_SOURCES = p11test.cpp \
 				SymmetricAlgorithmTests.cpp \
 				DigestTests.cpp \
@@ -543,6 +547,7 @@ p11test_SOURCES = p11test.cpp \
 				TokenTests.cpp \
 				UserTests.cpp \
 				ObjectTests.cpp \
+				DeriveTests.cpp \
 				SignVerifyTests.cpp \
 				AsymEncryptDecryptTests.cpp \
 				AsymWrapUnwrapTests.cpp \
@@ -599,6 +604,14 @@ clean-checkPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
+../common/$(am__dirstamp):
+	@$(MKDIR_P) ../common
+	@: > ../common/$(am__dirstamp)
+../common/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) ../common/$(DEPDIR)
+	@: > ../common/$(DEPDIR)/$(am__dirstamp)
+../common/osmutex.$(OBJEXT): ../common/$(am__dirstamp) \
+	../common/$(DEPDIR)/$(am__dirstamp)
 
 p11test$(EXEEXT): $(p11test_OBJECTS) $(p11test_DEPENDENCIES) $(EXTRA_p11test_DEPENDENCIES) 
 	@rm -f p11test$(EXEEXT)
@@ -606,12 +619,15 @@ p11test$(EXEEXT): $(p11test_OBJECTS) $(p11test_DEPENDENCIES) $(EXTRA_p11test_DEP
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f ../common/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@../common/$(DEPDIR)/osmutex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AsymEncryptDecryptTests.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AsymWrapUnwrapTests.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DeriveTests.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DigestTests.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/InfoTests.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/InitTests.Po@am__quote@
@@ -622,43 +638,31 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SymmetricAlgorithmTests.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TokenTests.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UserTests.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/osmutex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11test.Po@am__quote@
 
 .cpp.o:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ $<
 
 .cpp.obj:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .cpp.lo:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LTCXXCOMPILE) -c -o $@ $<
-
-osmutex.o: ../common/osmutex.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT osmutex.o -MD -MP -MF $(DEPDIR)/osmutex.Tpo -c -o osmutex.o `test -f '../common/osmutex.cpp' || echo '$(srcdir)/'`../common/osmutex.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/osmutex.Tpo $(DEPDIR)/osmutex.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../common/osmutex.cpp' object='osmutex.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o osmutex.o `test -f '../common/osmutex.cpp' || echo '$(srcdir)/'`../common/osmutex.cpp
-
-osmutex.obj: ../common/osmutex.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT osmutex.obj -MD -MP -MF $(DEPDIR)/osmutex.Tpo -c -o osmutex.obj `if test -f '../common/osmutex.cpp'; then $(CYGPATH_W) '../common/osmutex.cpp'; else $(CYGPATH_W) '$(srcdir)/../common/osmutex.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/osmutex.Tpo $(DEPDIR)/osmutex.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../common/osmutex.cpp' object='osmutex.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o osmutex.obj `if test -f '../common/osmutex.cpp'; then $(CYGPATH_W) '../common/osmutex.cpp'; else $(CYGPATH_W) '$(srcdir)/../common/osmutex.cpp'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -946,6 +950,8 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f ../common/$(DEPDIR)/$(am__dirstamp)
+	-rm -f ../common/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -957,7 +963,7 @@ clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
 	mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf ../common/$(DEPDIR) ./$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1003,7 +1009,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf ../common/$(DEPDIR) ./$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

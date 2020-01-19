@@ -111,6 +111,7 @@ CK_RV SymmetricAlgorithmTests::generateAesKey(CK_SESSION_HANDLE hSession, CK_BBO
 			     &hKey);
 }
 
+#ifndef WITH_FIPS
 CK_RV SymmetricAlgorithmTests::generateDesKey(CK_SESSION_HANDLE hSession, CK_BBOOL bToken, CK_BBOOL bPrivate, CK_OBJECT_HANDLE &hKey)
 {
 	CK_MECHANISM mechanism = { CKM_DES_KEY_GEN, NULL_PTR, 0 };
@@ -146,6 +147,7 @@ CK_RV SymmetricAlgorithmTests::generateDes2Key(CK_SESSION_HANDLE hSession, CK_BB
 			     keyAttribs, sizeof(keyAttribs)/sizeof(CK_ATTRIBUTE),
 			     &hKey);
 }
+#endif
 
 CK_RV SymmetricAlgorithmTests::generateDes3Key(CK_SESSION_HANDLE hSession, CK_BBOOL bToken, CK_BBOOL bPrivate, CK_OBJECT_HANDLE &hKey)
 {
@@ -177,12 +179,16 @@ void SymmetricAlgorithmTests::aesEncryptDecrypt(CK_MECHANISM_TYPE mechanismType,
 	CK_ULONG ulCipherTextMultiPartLen;
 	CK_BYTE recoveredText[300];
 	CK_ULONG ulRecoveredTextLen;
+	CK_BYTE recoveredTextMulti[300];
+	CK_ULONG ulRecoveredTextMultiLen;
+	CK_ULONG ulRecoveredTextMultiPartLen;
 	CK_RV rv;
 
 	rv = C_GenerateRandom(hSession, plainText, sizeof(plainText));
 	CPPUNIT_ASSERT(rv==CKR_OK);
 
-	if (mechanismType == CKM_AES_CBC)
+	if (mechanismType == CKM_AES_CBC ||
+	    mechanismType == CKM_AES_CBC_PAD)
 	{
 		rv = C_GenerateRandom(hSession, iv, sizeof(iv));
 		CPPUNIT_ASSERT(rv==CKR_OK);
@@ -194,14 +200,43 @@ void SymmetricAlgorithmTests::aesEncryptDecrypt(CK_MECHANISM_TYPE mechanismType,
 	rv = C_EncryptInit(hSession,&mechanism,hKey);
 	CPPUNIT_ASSERT(rv==CKR_OK);
 
+	// Test invalid plain text size
+	if (mechanismType == CKM_AES_ECB ||
+	    mechanismType == CKM_AES_CBC)
+	{
+		ulCipherTextLen = sizeof(cipherText);
+		rv = C_Encrypt(hSession,plainText,sizeof(plainText)-1,cipherText,&ulCipherTextLen);
+		CPPUNIT_ASSERT(rv==CKR_DATA_LEN_RANGE);
+		rv = C_EncryptInit(hSession,&mechanism,hKey);
+		CPPUNIT_ASSERT(rv==CKR_OK);
+	}
+
 	ulCipherTextLen = sizeof(cipherText);
 	rv = C_Encrypt(hSession,plainText,sizeof(plainText),cipherText,&ulCipherTextLen);
 	CPPUNIT_ASSERT(rv==CKR_OK);
-	CPPUNIT_ASSERT(ulCipherTextLen==sizeof(plainText));
+	if (mechanismType == CKM_AES_CBC_PAD)
+	{
+		CPPUNIT_ASSERT(ulCipherTextLen==(sizeof(plainText)+16));
+	}
+	else
+	{
+		CPPUNIT_ASSERT(ulCipherTextLen==sizeof(plainText));
+	}
 
 	// Multi-part encryption
 	rv = C_EncryptInit(hSession,&mechanism,hKey);
 	CPPUNIT_ASSERT(rv==CKR_OK);
+
+	// Test invalid plain text size
+	if (mechanismType == CKM_AES_ECB ||
+	    mechanismType == CKM_AES_CBC)
+	{
+		ulCipherTextMultiLen = sizeof(cipherTextMulti);
+		rv = C_EncryptUpdate(hSession,plainText,sizeof(plainText)/2-1,cipherTextMulti,&ulCipherTextMultiLen);
+		CPPUNIT_ASSERT(rv==CKR_DATA_LEN_RANGE);
+		rv = C_EncryptInit(hSession,&mechanism,hKey);
+		CPPUNIT_ASSERT(rv==CKR_OK);
+	}
 
 	ulCipherTextMultiLen = sizeof(cipherTextMulti);
 	rv = C_EncryptUpdate(hSession,plainText,sizeof(plainText)/2,cipherTextMulti,&ulCipherTextMultiLen);
@@ -229,8 +264,40 @@ void SymmetricAlgorithmTests::aesEncryptDecrypt(CK_MECHANISM_TYPE mechanismType,
 	CPPUNIT_ASSERT(ulRecoveredTextLen==sizeof(plainText));
 
 	CPPUNIT_ASSERT(memcmp(plainText, recoveredText, sizeof(plainText)) == 0);
+
+	// Multi-part decryption
+	rv = C_DecryptInit(hSession,&mechanism,hKey);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+
+	// Test invalid cipher text size
+	if (mechanismType == CKM_AES_ECB ||
+	    mechanismType == CKM_AES_CBC)
+	{
+		ulRecoveredTextMultiLen = sizeof(recoveredTextMulti);
+		rv = C_DecryptUpdate(hSession,cipherText,ulCipherTextLen/2-1,recoveredTextMulti,&ulRecoveredTextMultiLen);
+		CPPUNIT_ASSERT(rv==CKR_DATA_LEN_RANGE);
+		rv = C_DecryptInit(hSession,&mechanism,hKey);
+		CPPUNIT_ASSERT(rv==CKR_OK);
+	}
+
+	ulRecoveredTextMultiLen = sizeof(recoveredTextMulti);
+	rv = C_DecryptUpdate(hSession,cipherText,ulCipherTextLen/2,recoveredTextMulti,&ulRecoveredTextMultiLen);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+
+	ulRecoveredTextMultiPartLen = sizeof(recoveredTextMulti) - ulRecoveredTextMultiLen;
+	rv = C_DecryptUpdate(hSession,cipherText+ulCipherTextLen/2,ulCipherTextLen/2,recoveredTextMulti+ulRecoveredTextMultiLen,&ulRecoveredTextMultiPartLen);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+	ulRecoveredTextMultiLen += ulRecoveredTextMultiPartLen;
+
+	ulRecoveredTextMultiPartLen = sizeof(recoveredTextMulti) - ulRecoveredTextMultiLen;
+	rv = C_DecryptFinal(hSession,recoveredTextMulti+ulRecoveredTextMultiLen,&ulRecoveredTextMultiPartLen);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+	ulRecoveredTextMultiLen += ulRecoveredTextMultiPartLen;
+	CPPUNIT_ASSERT(ulRecoveredTextLen==ulRecoveredTextMultiLen);
+	CPPUNIT_ASSERT(memcmp(recoveredText, recoveredTextMulti, ulRecoveredTextLen) == 0);
 }
 
+#ifndef WITH_FIPS
 void SymmetricAlgorithmTests::desEncryptDecrypt(CK_MECHANISM_TYPE mechanismType, CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hKey)
 {
 	CK_MECHANISM mechanism = { mechanismType, NULL_PTR, 0 };
@@ -243,12 +310,16 @@ void SymmetricAlgorithmTests::desEncryptDecrypt(CK_MECHANISM_TYPE mechanismType,
 	CK_ULONG ulCipherTextMultiPartLen;
 	CK_BYTE recoveredText[300];
 	CK_ULONG ulRecoveredTextLen;
+	CK_BYTE recoveredTextMulti[300];
+	CK_ULONG ulRecoveredTextMultiLen;
+	CK_ULONG ulRecoveredTextMultiPartLen;
 	CK_RV rv;
 
 	rv = C_GenerateRandom(hSession, plainText, sizeof(plainText));
 	CPPUNIT_ASSERT(rv==CKR_OK);
 
-	if (mechanismType == CKM_DES_CBC)
+	if (mechanismType == CKM_DES_CBC ||
+	    mechanismType == CKM_DES_CBC_PAD)
 	{
 		rv = C_GenerateRandom(hSession, iv, sizeof(iv));
 		CPPUNIT_ASSERT(rv==CKR_OK);
@@ -260,14 +331,43 @@ void SymmetricAlgorithmTests::desEncryptDecrypt(CK_MECHANISM_TYPE mechanismType,
 	rv = C_EncryptInit(hSession,&mechanism,hKey);
 	CPPUNIT_ASSERT(rv==CKR_OK);
 
+	// Test invalid plain text size
+	if (mechanismType == CKM_DES_ECB ||
+	    mechanismType == CKM_DES_CBC)
+	{
+		ulCipherTextLen = sizeof(cipherText);
+		rv = C_Encrypt(hSession,plainText,sizeof(plainText)-1,cipherText,&ulCipherTextLen);
+		CPPUNIT_ASSERT(rv==CKR_DATA_LEN_RANGE);
+		rv = C_EncryptInit(hSession,&mechanism,hKey);
+		CPPUNIT_ASSERT(rv==CKR_OK);
+	}
+
 	ulCipherTextLen = sizeof(cipherText);
 	rv = C_Encrypt(hSession,plainText,sizeof(plainText),cipherText,&ulCipherTextLen);
 	CPPUNIT_ASSERT(rv==CKR_OK);
-	CPPUNIT_ASSERT(ulCipherTextLen==sizeof(plainText));
+	if (mechanismType == CKM_DES_CBC_PAD)
+	{
+		CPPUNIT_ASSERT(ulCipherTextLen==(sizeof(plainText)+8));
+	}
+	else
+	{
+		CPPUNIT_ASSERT(ulCipherTextLen==sizeof(plainText));
+	}
 
 	// Multi-part encryption
 	rv = C_EncryptInit(hSession,&mechanism,hKey);
 	CPPUNIT_ASSERT(rv==CKR_OK);
+
+	// Test invalid plain text size
+	if (mechanismType == CKM_DES_ECB ||
+	    mechanismType == CKM_DES_CBC)
+	{
+		ulCipherTextMultiLen = sizeof(cipherTextMulti);
+		rv = C_EncryptUpdate(hSession,plainText,sizeof(plainText)/2-1,cipherTextMulti,&ulCipherTextMultiLen);
+		CPPUNIT_ASSERT(rv==CKR_DATA_LEN_RANGE);
+		rv = C_EncryptInit(hSession,&mechanism,hKey);
+		CPPUNIT_ASSERT(rv==CKR_OK);
+	}
 
 	ulCipherTextMultiLen = sizeof(cipherTextMulti);
 	rv = C_EncryptUpdate(hSession,plainText,sizeof(plainText)/2,cipherTextMulti,&ulCipherTextMultiLen);
@@ -295,7 +395,39 @@ void SymmetricAlgorithmTests::desEncryptDecrypt(CK_MECHANISM_TYPE mechanismType,
 	CPPUNIT_ASSERT(ulRecoveredTextLen==sizeof(plainText));
 
 	CPPUNIT_ASSERT(memcmp(plainText, recoveredText, sizeof(plainText)) == 0);
+
+	// Multi-part decryption
+	rv = C_DecryptInit(hSession,&mechanism,hKey);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+
+	// Test invalid cipher text size
+	if (mechanismType == CKM_DES_ECB ||
+	    mechanismType == CKM_DES_CBC)
+	{
+		ulRecoveredTextMultiLen = sizeof(recoveredTextMulti);
+		rv = C_DecryptUpdate(hSession,cipherText,ulCipherTextLen/2-1,recoveredTextMulti,&ulRecoveredTextMultiLen);
+		CPPUNIT_ASSERT(rv==CKR_DATA_LEN_RANGE);
+		rv = C_DecryptInit(hSession,&mechanism,hKey);
+		CPPUNIT_ASSERT(rv==CKR_OK);
+	}
+
+	ulRecoveredTextMultiLen = sizeof(recoveredTextMulti);
+	rv = C_DecryptUpdate(hSession,cipherText,ulCipherTextLen/2,recoveredTextMulti,&ulRecoveredTextMultiLen);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+
+	ulRecoveredTextMultiPartLen = sizeof(recoveredTextMulti) - ulRecoveredTextMultiLen;
+	rv = C_DecryptUpdate(hSession,cipherText+ulCipherTextLen/2,ulCipherTextLen/2,recoveredTextMulti+ulRecoveredTextMultiLen,&ulRecoveredTextMultiPartLen);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+	ulRecoveredTextMultiLen += ulRecoveredTextMultiPartLen;
+
+	ulRecoveredTextMultiPartLen = sizeof(recoveredTextMulti) - ulRecoveredTextMultiLen;
+	rv = C_DecryptFinal(hSession,recoveredTextMulti+ulRecoveredTextMultiLen,&ulRecoveredTextMultiPartLen);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+	ulRecoveredTextMultiLen += ulRecoveredTextMultiPartLen;
+	CPPUNIT_ASSERT(ulRecoveredTextLen==ulRecoveredTextMultiLen);
+	CPPUNIT_ASSERT(memcmp(recoveredText, recoveredTextMulti, ulRecoveredTextLen) == 0);
 }
+#endif
 
 void SymmetricAlgorithmTests::des3EncryptDecrypt(CK_MECHANISM_TYPE mechanismType, CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hKey)
 {
@@ -309,12 +441,16 @@ void SymmetricAlgorithmTests::des3EncryptDecrypt(CK_MECHANISM_TYPE mechanismType
 	CK_ULONG ulCipherTextMultiPartLen;
 	CK_BYTE recoveredText[300];
 	CK_ULONG ulRecoveredTextLen;
+	CK_BYTE recoveredTextMulti[300];
+	CK_ULONG ulRecoveredTextMultiLen;
+	CK_ULONG ulRecoveredTextMultiPartLen;
 	CK_RV rv;
 
 	rv = C_GenerateRandom(hSession, plainText, sizeof(plainText));
 	CPPUNIT_ASSERT(rv==CKR_OK);
 
-	if (mechanismType == CKM_DES3_CBC)
+	if (mechanismType == CKM_DES3_CBC ||
+	    mechanismType == CKM_DES3_CBC_PAD)
 	{
 		rv = C_GenerateRandom(hSession, iv, sizeof(iv));
 		CPPUNIT_ASSERT(rv==CKR_OK);
@@ -326,14 +462,43 @@ void SymmetricAlgorithmTests::des3EncryptDecrypt(CK_MECHANISM_TYPE mechanismType
 	rv = C_EncryptInit(hSession,&mechanism,hKey);
 	CPPUNIT_ASSERT(rv==CKR_OK);
 
+	// Test invalid plain text size
+	if (mechanismType == CKM_DES3_ECB ||
+	    mechanismType == CKM_DES3_CBC)
+	{
+		ulCipherTextLen = sizeof(cipherText);
+		rv = C_Encrypt(hSession,plainText,sizeof(plainText)-1,cipherText,&ulCipherTextLen);
+		CPPUNIT_ASSERT(rv==CKR_DATA_LEN_RANGE);
+		rv = C_EncryptInit(hSession,&mechanism,hKey);
+		CPPUNIT_ASSERT(rv==CKR_OK);
+	}
+
 	ulCipherTextLen = sizeof(cipherText);
 	rv = C_Encrypt(hSession,plainText,sizeof(plainText),cipherText,&ulCipherTextLen);
 	CPPUNIT_ASSERT(rv==CKR_OK);
-	CPPUNIT_ASSERT(ulCipherTextLen==sizeof(plainText));
+	if (mechanismType == CKM_DES3_CBC_PAD)
+	{
+		CPPUNIT_ASSERT(ulCipherTextLen==(sizeof(plainText)+8));
+	}
+	else
+	{
+		CPPUNIT_ASSERT(ulCipherTextLen==sizeof(plainText));
+	}
 
 	// Multi-part encryption
 	rv = C_EncryptInit(hSession,&mechanism,hKey);
 	CPPUNIT_ASSERT(rv==CKR_OK);
+
+	// Test invalid plain text size
+	if (mechanismType == CKM_DES3_ECB ||
+	    mechanismType == CKM_DES3_CBC)
+	{
+		ulCipherTextMultiLen = sizeof(cipherTextMulti);
+		rv = C_EncryptUpdate(hSession,plainText,sizeof(plainText)/2-1,cipherTextMulti,&ulCipherTextMultiLen);
+		CPPUNIT_ASSERT(rv==CKR_DATA_LEN_RANGE);
+		rv = C_EncryptInit(hSession,&mechanism,hKey);
+		CPPUNIT_ASSERT(rv==CKR_OK);
+	}
 
 	ulCipherTextMultiLen = sizeof(cipherTextMulti);
 	rv = C_EncryptUpdate(hSession,plainText,sizeof(plainText)/2,cipherTextMulti,&ulCipherTextMultiLen);
@@ -361,6 +526,37 @@ void SymmetricAlgorithmTests::des3EncryptDecrypt(CK_MECHANISM_TYPE mechanismType
 	CPPUNIT_ASSERT(ulRecoveredTextLen==sizeof(plainText));
 
 	CPPUNIT_ASSERT(memcmp(plainText, recoveredText, sizeof(plainText)) == 0);
+
+	// Multi-part decryption
+	rv = C_DecryptInit(hSession,&mechanism,hKey);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+
+	// Test invalid cipher text size
+	if (mechanismType == CKM_DES3_ECB ||
+	    mechanismType == CKM_DES3_CBC)
+	{
+		ulRecoveredTextMultiLen = sizeof(recoveredTextMulti);
+		rv = C_DecryptUpdate(hSession,cipherText,ulCipherTextLen/2-1,recoveredTextMulti,&ulRecoveredTextMultiLen);
+		CPPUNIT_ASSERT(rv==CKR_DATA_LEN_RANGE);
+		rv = C_DecryptInit(hSession,&mechanism,hKey);
+		CPPUNIT_ASSERT(rv==CKR_OK);
+	}
+
+	ulRecoveredTextMultiLen = sizeof(recoveredTextMulti);
+	rv = C_DecryptUpdate(hSession,cipherText,ulCipherTextLen/2,recoveredTextMulti,&ulRecoveredTextMultiLen);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+
+	ulRecoveredTextMultiPartLen = sizeof(recoveredTextMulti) - ulRecoveredTextMultiLen;
+	rv = C_DecryptUpdate(hSession,cipherText+ulCipherTextLen/2,ulCipherTextLen/2,recoveredTextMulti+ulRecoveredTextMultiLen,&ulRecoveredTextMultiPartLen);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+	ulRecoveredTextMultiLen += ulRecoveredTextMultiPartLen;
+
+	ulRecoveredTextMultiPartLen = sizeof(recoveredTextMulti) - ulRecoveredTextMultiLen;
+	rv = C_DecryptFinal(hSession,recoveredTextMulti+ulRecoveredTextMultiLen,&ulRecoveredTextMultiPartLen);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+	ulRecoveredTextMultiLen += ulRecoveredTextMultiPartLen;
+	CPPUNIT_ASSERT(ulRecoveredTextLen==ulRecoveredTextMultiLen);
+	CPPUNIT_ASSERT(memcmp(recoveredText, recoveredTextMulti, ulRecoveredTextLen) == 0);
 }
 
 #ifdef HAVE_AES_KEY_WRAP_PAD
@@ -619,6 +815,7 @@ void SymmetricAlgorithmTests::testAesEncryptDecrypt()
 
 	aesEncryptDecrypt(CKM_AES_ECB,hSessionRO,hKey);
 	aesEncryptDecrypt(CKM_AES_CBC,hSessionRO,hKey);
+	aesEncryptDecrypt(CKM_AES_CBC_PAD,hSessionRO,hKey);
 }
 
 void SymmetricAlgorithmTests::testAesWrapUnwrap()
@@ -690,6 +887,7 @@ void SymmetricAlgorithmTests::testDesEncryptDecrypt()
 	rv = C_Login(hSessionRO,CKU_USER,pin,pinLength);
 	CPPUNIT_ASSERT(rv==CKR_OK);
 
+#ifndef WITH_FIPS
 	CK_OBJECT_HANDLE hKey = CK_INVALID_HANDLE;
 
 	// Generate all combinations of session/token keys.
@@ -698,6 +896,7 @@ void SymmetricAlgorithmTests::testDesEncryptDecrypt()
 
 	desEncryptDecrypt(CKM_DES_ECB,hSessionRO,hKey);
 	desEncryptDecrypt(CKM_DES_CBC,hSessionRO,hKey);
+	desEncryptDecrypt(CKM_DES_CBC_PAD,hSessionRO,hKey);
 
 	CK_OBJECT_HANDLE hKey2 = CK_INVALID_HANDLE;
 
@@ -707,6 +906,8 @@ void SymmetricAlgorithmTests::testDesEncryptDecrypt()
 
 	des3EncryptDecrypt(CKM_DES3_ECB,hSessionRO,hKey2);
 	des3EncryptDecrypt(CKM_DES3_CBC,hSessionRO,hKey2);
+	des3EncryptDecrypt(CKM_DES3_CBC_PAD,hSessionRO,hKey2);
+#endif
 
 	CK_OBJECT_HANDLE hKey3 = CK_INVALID_HANDLE;
 
@@ -716,6 +917,7 @@ void SymmetricAlgorithmTests::testDesEncryptDecrypt()
 
 	des3EncryptDecrypt(CKM_DES3_ECB,hSessionRO,hKey3);
 	des3EncryptDecrypt(CKM_DES3_CBC,hSessionRO,hKey3);
+	des3EncryptDecrypt(CKM_DES3_CBC_PAD,hSessionRO,hKey3);
 }
 
 void SymmetricAlgorithmTests::testNullTemplate()
@@ -724,7 +926,7 @@ void SymmetricAlgorithmTests::testNullTemplate()
 	CK_UTF8CHAR pin[] = SLOT_0_USER1_PIN;
 	CK_ULONG pinLength = sizeof(pin) - 1;
 	CK_SESSION_HANDLE hSession;
-	CK_MECHANISM mechanism1 = { CKM_DES_KEY_GEN, NULL_PTR, 0 };
+	CK_MECHANISM mechanism1 = { CKM_DES3_KEY_GEN, NULL_PTR, 0 };
 	CK_MECHANISM mechanism2 = { CKM_AES_KEY_GEN, NULL_PTR, 0 };
 	CK_OBJECT_HANDLE hKey = CK_INVALID_HANDLE;
 
@@ -751,4 +953,86 @@ void SymmetricAlgorithmTests::testNullTemplate()
 
 	rv = C_GenerateKey(hSession, &mechanism2, NULL_PTR, 0, &hKey);
 	CPPUNIT_ASSERT(rv == CKR_TEMPLATE_INCOMPLETE);
+}
+
+void SymmetricAlgorithmTests::testNonModifiableDesKeyGeneration()
+{
+	CK_RV rv;
+	CK_UTF8CHAR pin[] = SLOT_0_USER1_PIN;
+	CK_ULONG pinLength = sizeof(pin) - 1;
+	CK_SESSION_HANDLE hSession;
+	CK_MECHANISM mechanism = { CKM_DES3_KEY_GEN, NULL_PTR, 0 };
+	CK_OBJECT_HANDLE hKey = CK_INVALID_HANDLE;
+	CK_BBOOL bFalse = CK_FALSE;
+	CK_BBOOL bTrue = CK_TRUE;
+	CK_BBOOL bToken = IN_SESSION;
+
+	CK_ATTRIBUTE keyAttribs[] =
+		{
+		{ CKA_TOKEN, &bToken, sizeof(bToken) },
+		{ CKA_PRIVATE, &bTrue, sizeof(bTrue) },
+		{ CKA_MODIFIABLE, &bTrue, sizeof(bTrue) },
+		{ CKA_ENCRYPT, &bTrue, sizeof(bTrue) },
+		{ CKA_DECRYPT, &bTrue, sizeof(bTrue) },
+		{ CKA_WRAP, &bTrue, sizeof(bTrue) }
+	};
+
+	// Just make sure that we finalize any previous tests
+	C_Finalize(NULL_PTR);
+
+	// Initialize the library and start the test.
+	rv = C_Initialize(NULL_PTR);
+	CPPUNIT_ASSERT(rv == CKR_OK);
+
+	// Open read-write session
+	rv = C_OpenSession(SLOT_INIT_TOKEN, CKF_SERIAL_SESSION | CKF_RW_SESSION, NULL_PTR, NULL_PTR, &hSession);
+	CPPUNIT_ASSERT(rv == CKR_OK);
+
+	// Login USER into the sessions so we can create a private objects
+	rv = C_Login(hSession, CKU_USER, pin, pinLength);
+	CPPUNIT_ASSERT(rv==CKR_OK);
+
+	rv = C_GenerateKey(hSession, &mechanism,
+		keyAttribs, sizeof(keyAttribs)/sizeof(CK_ATTRIBUTE),
+		&hKey);
+	CPPUNIT_ASSERT(rv == CKR_OK);
+
+	rv = C_DestroyObject(hSession, hKey);
+	CPPUNIT_ASSERT(rv == CKR_OK);
+
+	// The C_GenerateKey call failed if CKA_MODIFIABLE was bFalse
+	// This was a bug in the SoftHSM implementation
+	keyAttribs[2].pValue = &bFalse;
+	keyAttribs[2].ulValueLen = sizeof(bFalse);
+
+	rv = C_GenerateKey(hSession, &mechanism,
+		keyAttribs, sizeof(keyAttribs) / sizeof(CK_ATTRIBUTE),
+		&hKey);
+	// The call would fail with CKR_ATTRIBUTE_READ_ONLY
+	CPPUNIT_ASSERT(rv == CKR_OK);
+
+	// Now create a template where the CKA_MODIFIABLE attribute is last in the list
+	CK_ATTRIBUTE keyAttribs1[] =
+	{
+		{ CKA_TOKEN, &bToken, sizeof(bToken) },
+		{ CKA_PRIVATE, &bTrue, sizeof(bTrue) },
+		{ CKA_ENCRYPT, &bTrue, sizeof(bTrue) },
+		{ CKA_DECRYPT, &bTrue, sizeof(bTrue) },
+		{ CKA_WRAP, &bTrue, sizeof(bTrue) },
+		{ CKA_MODIFIABLE, &bTrue, sizeof(bTrue) }
+	};
+
+	rv = C_GenerateKey(hSession, &mechanism,
+		keyAttribs1, sizeof(keyAttribs1) / sizeof(CK_ATTRIBUTE),
+		&hKey);
+	CPPUNIT_ASSERT(rv == CKR_OK);
+
+	// Now when CKA_MODIFIABLE is bFalse the key generation succeeds
+	keyAttribs1[2].pValue = &bFalse;
+	keyAttribs1[2].ulValueLen = sizeof(bFalse);
+
+	rv = C_GenerateKey(hSession, &mechanism,
+		keyAttribs1, sizeof(keyAttribs1) / sizeof(CK_ATTRIBUTE),
+		&hKey);
+	CPPUNIT_ASSERT(rv == CKR_OK);
 }

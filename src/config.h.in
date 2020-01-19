@@ -3,6 +3,9 @@
 /* Define to default visibility of PKCS#11 entry points */
 #undef CRYPTOKI_VISIBILITY
 
+/* The default log level */
+#undef DEFAULT_LOG_LEVEL
+
 /* Default storage backend for token objects */
 #undef DEFAULT_OBJECTSTORE_BACKEND
 
@@ -15,6 +18,9 @@
 /* The default location of the token directory */
 #undef DEFAULT_TOKENDIR
 
+/* Define if advanced AES key wrap without pad is supported */
+#undef HAVE_AES_KEY_WRAP
+
 /* Define if advanced AES key wrap with pad is supported */
 #undef HAVE_AES_KEY_WRAP_PAD
 
@@ -26,6 +32,9 @@
 
 /* Define if you have dlopen */
 #undef HAVE_DLOPEN
+
+/* Define to 1 if you have the `getpwuid_r' function. */
+#undef HAVE_GETPWUID_R
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
@@ -112,9 +121,6 @@
 /* Non-paged memory for secure storage */
 #undef SENSITIVE_NON_PAGE
 
-/* The log level set by the user */
-#undef SOFTLOGLEVEL
-
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
@@ -132,6 +138,9 @@
 
 /* Compile with ECC support */
 #undef WITH_ECC
+
+/* Compile with FIPS 140-2 mode */
+#undef WITH_FIPS
 
 /* Compile with GOST support */
 #undef WITH_GOST
