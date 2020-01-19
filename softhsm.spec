@@ -1,15 +1,18 @@
+#global prever rc1
 Summary: Software version of a PKCS#11 Hardware Security Module
 Name: softhsm
-Version: 2.0.0rc1
-Release: 3%{?dist}
+Version: 2.1.0
+Release: %{?prever:0.}2%{?prever:.%{prever}}%{?dist}
 License: BSD
 Url: http://www.opendnssec.org/
-Source: http://dist.opendnssec.org/source/testing/%{name}-%{version}.tar.gz
-Source1: http://dist.opendnssec.org/source/testing/%{name}-%{version}.tar.gz.sig
+Source: http://dist.opendnssec.org/source/%{?prever:testing/}%{name}-%{version}.tar.gz
+Source1: http://dist.opendnssec.org/source/%{?prever:testing/}%{name}-%{version}.tar.gz.sig
 Source2: softhsm.module
 # taken from coolkey which is not build on all arches we build on
 Source3: softhsm2-pk11install.c
+
 Group: Applications/System
+# which version of openssl contains backport of aes wrapping support?
 BuildRequires: openssl-devel >= 1.0.1e-42.el7_1.2, sqlite-devel >= 3.4.2, cppunit-devel
 BuildRequires: gcc-c++, pkgconfig, p11-kit-devel, nss-devel
 
@@ -23,8 +26,7 @@ Requires: openssl-libs >= 1.0.1e-42.el7_1.2
 %global nssdb %{_sysconfdir}/pki/nssdb
 
 %description
-NOTE: This package is experimental and is only suported for use with
-Identity Management.
+NOTE: This package is only suported for use with Identity Management.
 
 OpenDNSSEC is providing a software implementation of a generic
 cryptographic device with a PKCS#11 interface, the SoftHSM. SoftHSM is
@@ -35,14 +37,25 @@ with other cryptographic products because of the PKCS#11 interface.
 Summary: Development package of softhsm that includes the header files
 Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}, openssl-devel, sqlite-devel
+%if 0%{?prever:1}
+BuildRequires: autoconf, libtool, automake
+%endif
 
 %description devel
 The devel package contains the libsofthsm include files
 
 %prep
-%setup -q
+%setup -q -n %{name}-%{version}%{?prever}
+
+%if 0%{?prever:1}
+autoreconf -fiv
+%endif
+
 # remove softhsm/ subdir auto-added to --libdir
 sed -i "s:full_libdir/softhsm:full_libdir:g" configure
+%if 0%{?prever:1}
+sed -i 's:^full_libdir=":#full_libdir=":g' configure.ac
+%endif
 sed -i "s:libdir)/@PACKAGE@:libdir):" Makefile.in
 
 %build
@@ -70,10 +83,14 @@ cp src/lib/*.h %{buildroot}%{_includedir}/softhsm
 mkdir -p %{buildroot}/%{_sharedstatedir}/softhsm/tokens
 install -m0755 -D softhsm2-pk11install %{buildroot}/%{_bindir}/softhsm2-pk11install
 
+# rhbz#1272423 NSS needs it to be in the search path too
+( cd  %{buildroot}/%{_libdir} ; ln -s pkcs11/libsofthsm2.so)
+
 %files
 %config(noreplace) %{_sysconfdir}/softhsm2.conf
 %{_bindir}/*
 %{_libdir}/pkcs11/libsofthsm2.so
+%{_libdir}/libsofthsm2.so
 %attr(0664,root,root) %{_datadir}/p11-kit/modules/softhsm.module
 %attr(0770,ods,ods) %dir %{_sharedstatedir}/softhsm
 %attr(0770,ods,ods) %dir %{_sharedstatedir}/softhsm/tokens
@@ -87,7 +104,7 @@ install -m0755 -D softhsm2-pk11install %{buildroot}/%{_bindir}/softhsm2-pk11inst
 %pre
 getent group ods >/dev/null || groupadd -r ods
 getent passwd ods >/dev/null || \
-    useradd -r -g ods -d /%{_sharedstatedir}/softhsm -s /sbin/nologin \
+    useradd -r -g ods -d %{_sharedstatedir}/softhsm -s /sbin/nologin \
     -c "softhsm private keys owner" ods
 exit 0
 
@@ -102,6 +119,12 @@ if [ $1 -eq 0 ]; then
 fi
 
 %changelog
+* Thu Jun 23 2016 Paul Wouters <pwouters@redhat.com> - 2.1.0-2
+- Re-add note this package is only supported for IdM
+
+* Wed Jun 22 2016 Paul Wouters <pwouters@redhat.com> - 2.1.0-1
+- Resolves: rhbz#1281704 Rebase to softhsm 2.1.0, fix search path, fix writing trusted/CA certs
+
 * Fri Jun 26 2015 Petr Spacek <pspacek@redhat.com> - 2.0.0rc1-3
 - Dependency on OpenSSL libraries with fix for bug #1193942 was added.
 
